@@ -1,0 +1,204 @@
+{
+    "pipeline": {
+      "stage_1_classification": {
+        "action": "classify_question_type",
+        "method": "zero_shot_or_finetuned_classifier",
+        "description": "Classify the user's question into one of 12 predefined linguistic question types using a classifier or GPT."
+      },
+  
+      "stage_2_retrieval": {
+        "action": "retrieve_context",
+        "dispatcher": {
+          "1_meaning_of_quranic_word": [
+            {
+              "source": "Quran Morphology",
+              "method": "smart_exact_match",
+              "description": "Strip diacritics and tokenize input (e.g., بنورهم → بِ + نور + هم); match token group by word_index.",
+              "on_fail": {
+                "action": "return_message",
+                "message": "The word you provided does not exist in the Qur'anic database."
+              }
+            },
+            {
+              "source": "root_analysis",
+              "method": "root_lookup_combined",
+              "description": "Use matched root to retrieve full semantic record from root_analysis."
+            }
+          ],
+  
+          "2_semantic_context_of_word": [
+            {
+              "source": "Quran Morphology",
+              "method": "lemma_match + surah_filter",
+              "description": "Find lemma usage in a specific surah.",
+              "on_fail": {
+                "action": "return_message",
+                "message": "The word or lemma could not be found in the Qur'anic corpus."
+              }
+            },
+            {
+              "source": "root_analysis",
+              "method": "root_lookup_combined"
+            }
+          ],
+  
+          "3_multiple_contexts_of_same_word": [
+            {
+              "source": "Quran Morphology",
+              "method": "root_match",
+              "description": "Find all verses containing the root across the Qur’an.",
+              "on_fail": {
+                "action": "return_message",
+                "message": "The root could not be located in the Qur'anic corpus."
+              }
+            },
+            {
+              "source": "root_analysis",
+              "method": "root_lookup_combined"
+            }
+          ],
+  
+          "4_difference_between_two_words": [
+            {
+              "source": "Quran Morphology",
+              "method": "lemma_match",
+              "description": "Find the roots of both lemmas.",
+              "on_fail": {
+                "action": "return_message",
+                "message": "One or both of the words are not found in the Qur'an."
+              }
+            },
+            {
+              "source": "root_analysis",
+              "method": "root_lookup_combined"
+            }
+          ],
+  
+          "5_synonyms_and_antonyms": [
+            {
+              "source": "Quran Morphology",
+              "method": "lemma_match",
+              "on_fail": {
+                "action": "return_message",
+                "message": "The word is not present in the Qur'anic corpus."
+              }
+            },
+            {
+              "source": "root_analysis",
+              "method": "root_lookup_combined"
+            }
+          ],
+  
+          "6_comparison_of_near_synonyms_in_same_verse": [
+            {
+              "source": "Quran Morphology",
+              "method": "lemma_match",
+              "on_fail": {
+                "action": "return_message",
+                "message": "One or more of the provided words are not found in the Qur'an."
+              }
+            },
+            {
+              "source": "root_analysis",
+              "method": "root_lookup_combined"
+            }
+          ],
+  
+          "7_root_conjugations_and_usage": [
+            {
+              "source": "Quran Morphology",
+              "method": "root_match",
+              "on_fail": {
+                "action": "return_message",
+                "message": "The root was not found in the Qur'anic corpus."
+              }
+            }
+          ],
+  
+          "8_morphological_weight_analysis": [
+            {
+              "source": "Quran Morphology",
+              "method": "lemma_match",
+              "on_fail": {
+                "action": "return_message",
+                "message": "The word is not found in the Qur'anic morphology database."
+              }
+            },
+            {
+              "source": "Arabic Dictionary",
+              "method": "pattern_lookup"
+            }
+          ],
+  
+          "9_linguistic_origin_of_root": [
+            {
+              "source": "root_analysis",
+              "method": "root_lookup_combined",
+              "on_fail": {
+                "action": "return_message",
+                "message": "The root is not documented in our classical root database."
+              }
+            },
+            {
+              "source": "Arabic Dictionary",
+              "method": "etymology_lookup"
+            }
+          ],
+  
+          "10_frequency_of_word_or_root": [
+            {
+              "source": "Quran Morphology",
+              "method": "lemma_match + surah_filter",
+              "on_fail": {
+                "action": "return_message",
+                "message": "The word was not found in the specified surah."
+              }
+            },
+            {
+              "postprocess": "count"
+            }
+          ],
+  
+          "11_thematic_classification_of_roots": [
+            {
+              "source": "root_analysis",
+              "method": "semantic_filter"
+            },
+            {
+              "source": "ChatGPT",
+              "method": "topic_expansion"
+            }
+          ],
+  
+          "12_semantic_domain_of_root": [
+            {
+              "source": "Quran Morphology",
+              "method": "root_match",
+              "on_fail": {
+                "action": "return_message",
+                "message": "The root could not be found in the Qur'anic text."
+              }
+            },
+            {
+              "source": "root_analysis",
+              "method": "root_lookup_combined"
+            },
+            {
+              "source": "ChatGPT",
+              "method": "domain_classification"
+            }
+          ]
+        }
+      },
+  
+      "stage_3_prompt_building": {
+        "action": "construct_final_prompt",
+        "description": "Generate a grounded prompt for GPT based on retrieved data and system guidance.",
+        "template_structure": {
+          "system_message": "You are a Quranic assistant. Use only the evidence below to answer accurately.",
+          "context": "retrieved_data",
+          "question": "original_user_input"
+        }
+      }
+    }
+  }

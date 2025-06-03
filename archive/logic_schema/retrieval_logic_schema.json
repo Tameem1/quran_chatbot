@@ -1,0 +1,252 @@
+{
+    "quranic_semantic_retrieval": [
+      {
+        "type": "1_meaning_of_quranic_word",
+        "example": "What does 'تبّ' mean?",
+        "steps": [
+          {
+            "action": "get_root",
+            "source": "Quran Morphology",
+            "method": "exact_match",
+            "field": "token",
+            "value": "تبّت"
+          },
+          {
+            "action": "lookup_root_meaning",
+            "source": "root_analysis",
+            "method": "exact_match",
+            "field": "root_stripped"
+          },
+          {
+            "action": "fallback_if_missing",
+            "source": "Arabic Dictionary",
+            "method": "keyword_search",
+            "field": "root"
+          }
+        ]
+      },
+      {
+        "type": "2_semantic_context_of_word",
+        "example": "What does الميزان mean in Surah Ar-Rahman?",
+        "steps": [
+          {
+            "action": "filter_by_lemma_and_surah",
+            "source": "Quran Morphology",
+            "method": "lemma_match",
+            "lemma": "ميزان",
+            "surah": 55
+          },
+          {
+            "action": "get_root_meaning",
+            "source": "root_analysis",
+            "method": "exact_match",
+            "field": "root_stripped"
+          },
+          {
+            "action": "infer_contextual_meaning",
+            "source": "ChatGPT",
+            "method": "context_embedding"
+          }
+        ]
+      },
+      {
+        "type": "3_multiple_contexts_of_same_word",
+        "example": "How does the meaning of نور change between Surah Nur and Surah Hadid?",
+        "steps": [
+          {
+            "action": "retrieve_verses_by_root",
+            "source": "Quran Morphology",
+            "method": "root_match",
+            "root": "نور",
+            "surahs": [24, 57]
+          },
+          {
+            "action": "compare_semantics",
+            "source": "root_analysis",
+            "method": "semantic_differentiation"
+          },
+          {
+            "action": "cross_context_analysis",
+            "source": "ChatGPT",
+            "method": "semantic_inference"
+          }
+        ]
+      },
+      {
+        "type": "4_difference_between_two_words",
+        "example": "What is the difference between القتل and الذبح?",
+        "steps": [
+          {
+            "action": "get_roots",
+            "source": "Quran Morphology",
+            "method": "lemma_match",
+            "lemmas": ["قتل", "ذبح"]
+          },
+          {
+            "action": "compare_meanings",
+            "source": "root_analysis",
+            "method": "parallel_lookup"
+          },
+          {
+            "action": "supplement_with_classical_dictionary",
+            "source": "Arabic Dictionary",
+            "method": "keyword_lookup"
+          }
+        ]
+      },
+      {
+        "type": "5_synonyms_and_antonyms",
+        "example": "What is the synonym of خشية in the Qur'an?",
+        "steps": [
+          {
+            "action": "get_root_from_lemma",
+            "source": "Quran Morphology",
+            "method": "lemma_match",
+            "lemma": "خشية"
+          },
+          {
+            "action": "retrieve_synonyms_antonyms",
+            "source": "root_analysis",
+            "method": "field_extract",
+            "fields": ["المرادفات", "الأضداد"]
+          },
+          {
+            "action": "fallback_expand",
+            "source": "Arabic Dictionary",
+            "method": "keyword_lookup"
+          }
+        ]
+      },
+      {
+        "type": "6_comparison_of_near_synonyms_in_same_verse",
+        "example": "Why is it خوفًا وطمعًا?",
+        "steps": [
+          {
+            "action": "get_roots_for_tokens",
+            "source": "Quran Morphology",
+            "method": "lemma_match",
+            "lemmas": ["خوف", "طمع"]
+          },
+          {
+            "action": "compare_semantics",
+            "source": "root_analysis",
+            "method": "parallel_lookup"
+          },
+          {
+            "action": "rhetorical_explanation",
+            "source": "ChatGPT",
+            "method": "co-occurrence_semantic_reasoning"
+          }
+        ]
+      },
+      {
+        "type": "7_root_conjugations_and_usage",
+        "example": "What are the conjugations of كتب in the Qur’an?",
+        "steps": [
+          {
+            "action": "get_all_tokens_by_root",
+            "source": "Quran Morphology",
+            "method": "root_match",
+            "root": "كتب"
+          },
+          {
+            "action": "group_by_morphology",
+            "method": "post_processing"
+          }
+        ]
+      },
+      {
+        "type": "8_morphological_weight_analysis",
+        "example": "What is the form of استغفر and why?",
+        "steps": [
+          {
+            "action": "retrieve_morph_features",
+            "source": "Quran Morphology",
+            "method": "lemma_match",
+            "lemma": "استغفر"
+          },
+          {
+            "action": "analyze_verb_form",
+            "source": "Arabic Dictionary",
+            "method": "pattern_lookup"
+          },
+          {
+            "action": "semantic_form_inference",
+            "source": "ChatGPT",
+            "method": "pattern_to_meaning"
+          }
+        ]
+      },
+      {
+        "type": "9_linguistic_origin_of_root",
+        "example": "What is the origin of the root فطر?",
+        "steps": [
+          {
+            "action": "get_root_meaning",
+            "source": "root_analysis",
+            "method": "exact_match",
+            "field": "root_stripped"
+          },
+          {
+            "action": "classical_origin",
+            "source": "Arabic Dictionary",
+            "method": "etymology_lookup"
+          }
+        ]
+      },
+      {
+        "type": "10_frequency_of_word_or_root",
+        "example": "How many times is صبر mentioned in Surah Al-Baqarah?",
+        "steps": [
+          {
+            "action": "filter_by_lemma_and_surah",
+            "source": "Quran Morphology",
+            "method": "exact_match",
+            "lemma": "صبر",
+            "surah": 2
+          },
+          {
+            "action": "count_results"
+          }
+        ]
+      },
+      {
+        "type": "11_thematic_classification_of_roots",
+        "example": "List roots related to war in the Qur'an",
+        "steps": [
+          {
+            "action": "semantic_keyword_filter",
+            "source": "root_analysis",
+            "method": "search_in_fields",
+            "keywords": ["حرب", "جهاد", "قتال", "نصر"]
+          },
+          {
+            "action": "supplement_with_taxonomy",
+            "source": "ChatGPT",
+            "method": "topic_expansion"
+          }
+        ]
+      },
+      {
+        "type": "12_semantic_domain_of_root",
+        "example": "Is the root قتل only used for violence?",
+        "steps": [
+          {
+            "action": "get_root_usages",
+            "source": "Quran Morphology",
+            "method": "root_match",
+            "root": "قتل"
+          },
+          {
+            "action": "semantic_context_grouping",
+            "method": "context_analysis"
+          },
+          {
+            "action": "domain_inference",
+            "source": "ChatGPT",
+            "method": "domain_classification"
+          }
+        ]
+      }
+    ]
+  }
