@@ -20,11 +20,11 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from utils.arabic import normalize
+from utils.arabic import normalize, strip_diacritics
 from utils.paths import MORPHOLOGY_FILE
 
 
-# ── helper: load / group tokens into full Qurʾānic “words” ─────────────
+# ── helper: load / group tokens into full Qurʾānic "words" ─────────────
 def _group_key(tok: Dict) -> tuple:
     return tok["surah"], tok["ayah"], tok["word_index"]
 
@@ -37,19 +37,38 @@ def _concat(tokens: List[Dict]) -> str:
 # ── spelling-variant generator ─────────────────────────────────────────
 _PROCLITICS: Set[str] = {"ك", "ف", "ب", "ل", "س", "و"}  # keep و as *optional* only
 
-def _variants(word: str) -> Set[str]:
+# Imperfect-verb prefixes that can follow the future particle «س»
+_IMPF_PREFIXES: Set[str] = {"أ", "إ", "آ", "ي", "ت", "ن"}
+
+def _variants(word: str, root_initial: str | None = None) -> Set[str]:
     """
     Generate a small set of orthographic variants that differ by:
         • leading proclitic (one char from _PROCLITICS)
         • leading definite article «ال»
         • trailing case-seat «ا»
+        • tanween (ً ٍ ٌ)
     The word itself is always included.
     """
-    forms = {word}
+    
+    forms: Set[str] = {word}
+    
 
-    # remove ONE leading proclitic
+    # ── 1. optional removal of a *single* proclitic  ─────────────────
+    # We apply tighter heuristics so that we never strip a letter that is
+    # actually the first radical of the root (e.g. «س» in «سابق»).
     if len(word) > 3 and word[0] in _PROCLITICS:
-        forms.add(word[1:])
+        # Skip if the letter seems to belong to the root itself
+        if root_initial and word[0] == root_initial:
+            pass  # do NOT remove – keeps integrity of root-initial
+        else:
+            # Special case «س+» : only future-particle when followed by an
+            # imperfect prefix.
+            if word[0] == "س":
+                if word[1] in _IMPF_PREFIXES:
+                    forms.add(word[1:])
+            else:
+                forms.add(word[1:])
+        
 
     tmp = set(forms)  # snapshot before next rules
 
@@ -57,11 +76,21 @@ def _variants(word: str) -> Set[str]:
     for w in tmp:
         if w.startswith("ال") and len(w) > 3:
             forms.add(w[2:])
+            
 
-    # remove trailing ‘ا’ seat (e.g. وفدا → وفد)
+    # remove tanween and trailing alif
     for w in list(forms):
+        # Remove tanween
+        if "ً" in w:
+            forms.add(w.replace("ً", ""))
+        if "ٍ" in w:
+            forms.add(w.replace("ٍ", ""))
+        if "ٌ" in w:
+            forms.add(w.replace("ٌ", ""))
+        # Remove trailing alif
         if w.endswith("ا") and len(w) > 3:
             forms.add(w[:-1])
+        
 
     return forms
 
@@ -83,9 +112,8 @@ def smart_exact_match(
     if not f.exists():
         return None, f"❗ morphology file not found: {f}"
 
-    # 1️⃣  pre-normalise & build variants of the query
+    # Normalize the query word by removing diacritics
     q_norm = normalize(query_word)
-    q_variants = _variants(q_norm)
 
     # 2️⃣  read once, group tokens
     token_groups: dict[tuple, list] = {}
@@ -94,12 +122,45 @@ def smart_exact_match(
             tok = json.loads(line)
             token_groups.setdefault(_group_key(tok), []).append(tok)
 
-    # 3️⃣  iterate groups, compare variant sets
+    # 3️⃣  iterate groups, compare variants sets
     for key, toks in token_groups.items():
-        tok_norm = normalize(_concat(toks))
-        if q_variants & _variants(tok_norm):           # non-empty intersection
+        # First check if the lemma matches (most strict)
+        lemma = toks[0].get("lemma", "")
+        if lemma:
+            lemma_norm = normalize(lemma)
+  
+            if lemma_norm == q_norm:
+                s, a, w = key
+                print(f"🔍 [DEBUG] Found exact lemma match: '{query_word}' in S{s}:A{a}, word_index={w}")
+                return toks, f"✅ Exact lemma match: S{s}:A{a}, word_index={w}"
+
+        # Then check if the surface form of the **whole Qurʾānic word** matches
+        # A Qurʾānic "word" may consist of multiple tokens (e.g.
+        # «أَبَانَا» → ["أَبَا", "نَا"]).  We therefore concatenate the tokens
+        # first and compare against the query word – after normalisation – using
+        # the spelling-variant helper.
+
+        surface = _concat(toks)
+        surface_norm = normalize(surface)
+
+        # Generate small variant sets for robust matching
+        query_forms   = _variants(q_norm)
+        root_initial  = (toks[0].get("root") or "")[:1] if toks[0].get("root") else None
+        surface_forms = _variants(surface_norm, root_initial)
+
+        if query_forms & surface_forms:
             s, a, w = key
-            return toks, f"✅ Match: S{s}:A{a}, word_index={w}"
+            print(f"🔍 [DEBUG] Found surface match: '{query_word}' in S{s}:A{a}, word_index={w}")
+            return toks, f"✅ Surface match: S{s}:A{a}, word_index={w}"
+
+        # Finally, if surface matching failed, fall back to root comparison
+        root = toks[0].get("root", "")
+        if root:
+            root_norm = normalize(root)
+            if root_norm == q_norm:
+                s, a, w = key
+                print(f"🔍 [DEBUG] Found exact root match: '{query_word}' in S{s}:A{a}, word_index={w}")
+                return toks, f"✅ Exact root match: S{s}:A{a}, word_index={w}"
 
     # 4️⃣  not found
     return None, (

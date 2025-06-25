@@ -16,7 +16,11 @@ import os
 from typing import List, Dict
 
 from openai import OpenAI
+from dotenv import load_dotenv
+import os
 
+# Load environment variables from .env file
+load_dotenv()
 # --------------------------------------------------------------
 # Configuration (override via env vars)
 # --------------------------------------------------------------
@@ -64,7 +68,7 @@ def query_llm(
     rsp = _client.chat.completions.create(
         model=model,
         messages=messages,
-        max_tokens=512,
+        max_tokens=1024,
         temperature=0.2,
         timeout=_TIMEOUT,
     )

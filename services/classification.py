@@ -3,7 +3,8 @@
 Stage-1 – LLM-only question classifier
 -------------------------------------
 
- • A single ChatCompletion call decides among 12 canonical classes.
+ • A single ChatCompletion call decides among 14 canonical classes.
+ • A single ChatCompletion call decides among 15 canonical classes.
  • A rich system prompt lists the class names *plus* one Arabic example
    for each class so the model can anchor its reasoning.
  • The assistant must reply with **only** the slug (no extra words).
@@ -18,7 +19,11 @@ import os
 import re
 
 from openai import OpenAI
+from dotenv import load_dotenv
+import os
 
+# Load environment variables from .env file
+load_dotenv()
 # ------------------------------------------------------------------ #
 # 1. Canonical label slugs  (keep these stable!)
 # ------------------------------------------------------------------ #
@@ -27,14 +32,14 @@ LABELS_SLUGS = [
     "semantic_context_word",           # 1
     "multiple_contexts_word",          # 2
     "difference_two_words",            # 3
-    "synonyms_antonyms",               # 4
-    "comparison_near_synonyms",        # 5
-    "root_conjugations_usage",         # 6
-    "morphological_weight_analysis",   # 7
-    "linguistic_origin_root",          # 8
-    "frequency_word_root",             # 9
-    "thematic_classification_roots",   # 10
-    "semantic_domain_root",            # 11
+    "root_conjugations_usage",         # 4
+    "frequency_word_root",             # 5
+    "thematic_classification_roots",   # 6
+    "semantic_domain_root",            # 7
+    "root_extraction",                 # 8
+    "root_ayah_extraction",            # 9
+    "roots_by_topic",                  # 10
+    "forms_of_root",                   # 11
 ]
 
 # ------------------------------------------------------------------ #
@@ -59,7 +64,7 @@ _SYS_PROMPT = """
 
 1) semantic_context_word
    مثال: ماذا يعني الميزان في سورة الرحمن؟
-    كيف يُفهم معنى نور في الآية: “نورٌ على نور”؟
+    كيف يُفهم معنى نور في الآية: "نورٌ على نور"؟
     
 2) multiple_contexts_word
    مثال: ما الفرق في معنى كلمة نور بين سورة النور وسورة الحديد؟
@@ -69,36 +74,39 @@ _SYS_PROMPT = """
    مثال: ما الفرق بين القتل والذبح في القرآن؟
     هل هناك فرق بين الرحمة والرأفة؟
 
-4) synonyms_antonyms
-   مثال: ما مرادف كلمة خشية في القرآن؟
-    ما ضد الهدى كما ورد في القرآن؟
+4) root_conjugations_usage
+   مثال: كيف تُستعمل صيغ جذر كتب المختلفة فى القرآن؟
+    في أي مواضع جاء جذر علم بصيغة اسم فاعل؟
 
-5) comparison_near_synonyms
-   مثال: لماذا قيل خوفًا وطمعًا؟
-    ما الفرق بين يمشون ويسيرون في آيات الحركة؟
-
-6) root_conjugations_usage
-   مثال: ما تصريفات جذر كتب في القرآن؟
-    كم مرة ورد جذر غفر، وفي أي سياقات؟
-
-7) morphological_weight_analysis
-   مثال: ما وزن كلمة استغفر؟ ولماذا جاءت بهذا الوزن؟
-    كيف يؤثر وزن فعّل على المعنى في جذر علم؟
-
-8) linguistic_origin_root
-   مثال: ما الأصل اللغوي لكلمة فطر؟
-    ما معنى عبد؟
-9) frequency_word_root
+5) frequency_word_root
    مثال: كم مرة ورد جذر سجد في القرآن؟
     كم مرة وردت كلمة صبر في سورة البقرة؟
 
-10) thematic_classification_roots
+6) thematic_classification_roots
     مثال: أعطني قائمة بالجذور المتعلقة بالحرب في القرآن.
     صنّف لي الكلمات التي تدل على الرحمة والعقاب.
 
-11) semantic_domain_root
+7) semantic_domain_root
     مثال: هل جذر قتل مرتبط فقط بالعنف أم له سياقات أخرى؟
     ما الجذور التي تنتمي لمجال العبادة؟
+
+8) root_extraction
+    مثال: ما الجذر الذي اشتُقّت منه كلمة يبتغون؟
+    ما الجذر الذي جاءت منه كلمة بدرهم؟
+    ما جذر كلمة الإسراء؟
+
+9) root_ayah_extraction
+    مثال: أعطني الآيات التي وردت فيها تصريفات جذر دمدم؟
+    أعطني الآيات التي وردت فيها كلمة مدهامّتان أو من الجذر دهم؟
+
+10) roots_by_topic
+    مثال: ما الجذور التي تدل على الهلاك الجماعي؟
+    صنّف الكلمات التي تدل على الغفلة والمعصية.
+
+11) forms_of_root
+    مثال: ما تصريفات جذر كتب الواردة في القرآن؟
+    ما تصريفات جذر خلق؟
+    ما تصريفات جذر عذب؟
 
 ✨ بعد التفكير، أعد فقط الـslug المطابق (دون أى نص إضافى).
 """.strip()
@@ -141,7 +149,7 @@ def _llm_label(question: str) -> str:
 # ------------------------------------------------------------------ #
 def classify(question: str) -> str:
     """
-    Stage-1 entry point: returns one of the 12 canonical slugs.
+    Stage-1 entry point: returns one of the 14 canonical slugs.
     """
     return _llm_label(question)
 
