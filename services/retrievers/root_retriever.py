@@ -37,13 +37,7 @@ def root_lookup_combined(
                 # Add debugging note about the match found
                 debug_note += f"\n✅ Found matching root '{root}' in entry #{entry.get('#', 'N/A')}"
                 return entry, debug_note
-            # Debug for our target root
-            if entry_root == "أبق" or root == "أبق":
-                print(f"\n🔍 [DEBUG] Found potential match:")
-                print(f"🔍 [DEBUG] Entry root: '{entry_root}'")
-                print(f"🔍 [DEBUG] Entry root type: {type(entry_root)}")
-                print(f"🔍 [DEBUG] Entry root bytes: {entry_root.encode('utf-8')}")
-                print(f"🔍 [DEBUG] Entry: {entry}")
+
 
     # Add debugging note about no match found
     debug_note += f"\n❌ No matching root found for '{root}' in root_analysis.jsonl"
